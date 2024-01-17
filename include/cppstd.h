@@ -24,6 +24,7 @@
 #include <memory>
 #include <queue>
 #include <regex>
+#include <shared_mutex>
 #include <thread>
 #include <typeinfo>
 #include <type_traits>
@@ -324,6 +325,10 @@
         #define SNPRINTF_FUNC sprintf
         #define SNPRINTF_ARGS(x,y) (x)
     #endif
+#endif
+
+#ifndef CMS_DEFAULT_LINE_LENGTH
+#define CMS_DEFAULT_LINE_LENGTH 80
 #endif
 
 #ifndef CMS_FILENAME_MAX

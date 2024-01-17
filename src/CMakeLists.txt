@@ -5,3 +5,4 @@
 # 하위 프로젝트를 포함합니다.
 add_subdirectory (utils)
 add_subdirectory (osinf)
+add_subdirectory (core)

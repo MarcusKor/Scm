@@ -7,6 +7,20 @@
 
 namespace VS3CODEFACTORY::UTILS
 {
+	class Spinner
+	{
+	public:
+		Spinner();
+
+		void SpinDelay(uint32_t ms);
+
+	private:
+		double_t m_nCount;
+		static thread_local double_t m_dResult;
+
+		void Spin(uint32_t count);
+	};
+
 	class SpinLock
 	{
 	public:

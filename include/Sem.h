@@ -105,6 +105,37 @@ namespace VS3CODEFACTORY::OSINF
         char       m_cToggle_bit;
         Semaphore* m_pSem;
     } memory_access_object_t;
+
+    class ConditionalVariableSemaphore
+    {
+    public:
+        ConditionalVariableSemaphore(uint32_t count = 0);
+
+        void Notify();
+        void Wait();
+        bool TryWait();
+
+    private:
+        std::mutex m_mx;
+        std::condition_variable m_cv;
+        uint32_t m_nCount;
+    };
+
+    class BinaryBlockSemaphore
+    {
+    public:
+        BinaryBlockSemaphore();
+
+        void Increment();
+        void Decrement();
+        void Wait();
+        bool TryWait();
+
+    private:
+        std::mutex m_mx;
+        std::condition_variable m_cv;
+        int32_t m_nCount;
+    };
 }
 
 #if defined __cplusplus

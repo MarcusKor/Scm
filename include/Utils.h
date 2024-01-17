@@ -138,6 +138,11 @@ extern "C" {
 #define print_warning_info set_error_location(__FILE__,__LINE__), print_warning
 #define print_error_info set_error_location(__FILE__,__LINE__), print_error
 #define print_debug_info if(g_log_debug) set_debug_location(__FILE__,__LINE__), print_debug
+
+	int32_t random_at_most(int32_t max);
+	int32_t random_range(int32_t a, int32_t b);
+	double_t get_steady_clock_msec();
+
 #if defined __cplusplus
 }
 #endif
@@ -147,5 +152,21 @@ extern std::string get_local_time_now();
 extern std::string get_gmt_time_now();
 extern std::string transform_string(std::string& str, bool upper);
 extern std::vector<std::string> split_string(std::string str, std::string pattern);
+
+template <typename... Args>
+const char* format_string(const char* fmt, Args... args)
+{
+	static thread_local char buf[CMS_DEFAULT_BUFFER_SIZE];
+	sprintf(buf, fmt, args...);
+	return buf;
+}
+
+template <class Clock>
+double get_chrono_precision()
+{
+	std::chrono::duration<double_t, std::nano> ns = typename Clock::duration(1);
+	std::cout << ns.count() << " ns" << std::endl;
+	return ns.count();
+}
 
 #endif // UTILS_H

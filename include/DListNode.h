@@ -20,7 +20,7 @@ namespace VS3CODEFACTORY::UTILS
 			, m_copied(copy)
 			, m_data_ptr(ptr)
 			, m_data_size(size)
-			, m_next(nullptr)
+			, m_pNext(nullptr)
 			, m_prev(nullptr)
 		{
 			if (copy)
@@ -34,7 +34,7 @@ namespace VS3CODEFACTORY::UTILS
 		friend class DList;
 
 	protected:
-		DListNode* m_next;
+		DListNode* m_pNext;
 		DListNode* m_prev;
 
 		void Allocate(void* ptr, size_t size)

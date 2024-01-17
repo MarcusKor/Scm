@@ -2171,3 +2171,32 @@ std::vector<std::string> split_string(std::string str, std::string pattern)
     return std::vector<std::string>(itr, end);
 }
 
+int32_t random_at_most(int32_t max)
+{
+	uint32_t num_bins = (uint32_t)max + 1;
+	uint32_t num_rand = (uint32_t)RAND_MAX + 1;
+	uint32_t bin_size = num_rand / num_bins;
+	uint32_t defect = num_rand % num_bins;
+
+	int32_t x;
+
+	do
+	{
+		x = rand();
+	}
+	while (num_rand - defect <= (uint32_t)x);
+
+	return x / bin_size;
+}
+
+int32_t random_range(int32_t a, int32_t b)
+{
+	return a + random_at_most(b - a);
+}
+
+double_t get_steady_clock_msec()
+{
+	static std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+	return duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+}
+

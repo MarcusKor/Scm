@@ -1373,3 +1373,74 @@ bool Semaphore::IsValid()
 {
     return m_pSem != nullptr;
 }
+
+ConditionalVariableSemaphore::ConditionalVariableSemaphore(uint32_t count)
+    : m_nCount(count) {}
+
+
+void ConditionalVariableSemaphore::Notify()
+{
+    std::unique_lock<std::mutex> lock(m_mx);
+    m_nCount++;
+    m_cv.notify_one();
+}
+
+void ConditionalVariableSemaphore::Wait()
+{
+    std::unique_lock<std::mutex> lock(m_mx);
+    m_cv.wait(lock, [this]() {return m_nCount > 0; });
+
+    while (m_nCount == 0)
+    {
+        m_cv.wait(lock);
+    }
+
+    m_nCount--;
+}
+
+bool ConditionalVariableSemaphore::TryWait()
+{
+    std::unique_lock<std::mutex> lock(m_mx);
+
+    if (m_nCount)
+    {
+        m_nCount--;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+void BinaryBlockSemaphore::Increment()
+{
+    std::unique_lock<std::mutex> lock(m_mx);
+    m_nCount++;
+}
+
+void BinaryBlockSemaphore::Decrement()
+{
+    std::unique_lock<std::mutex> lock(m_mx);
+    m_nCount--;
+    m_cv.notify_all();
+}
+
+void BinaryBlockSemaphore::Wait()
+{
+    std::unique_lock<std::mutex> lock(m_mx);
+    m_cv.wait(lock, [this]()
+        {
+            return m_nCount == 0;
+        });
+}
+
+bool BinaryBlockSemaphore::TryWait()
+{
+    std::unique_lock<std::mutex> lock(m_mx);
+
+    if (m_nCount == 0)
+        return true;
+    else
+        return false;
+}

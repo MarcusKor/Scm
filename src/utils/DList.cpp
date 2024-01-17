@@ -368,7 +368,7 @@ void* DList::GetNext(DListNode** ext)
 		return nullptr;
 
 	if ((*ext) != nullptr)
-		(*ext) = (*ext)->m_next;
+		(*ext) = (*ext)->m_pNext;
 
 	if ((*ext) != nullptr)
 		return (*ext)->m_data_ptr;
@@ -410,7 +410,7 @@ void* DList::GetById(int32_t m_uId)
 		if (node->m_uId == m_uId)
 			return node->m_data_ptr;
 
-		node = node->m_next;
+		node = node->m_pNext;
 	}
 
 	return nullptr;
