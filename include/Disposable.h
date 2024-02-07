@@ -23,7 +23,7 @@ namespace VS3CODEFACTORY::CORE
 			}
 		}
 
-		virtual void DisposeManagedObjects() = 0;
+		virtual void DisposeManagedObjects() {}
 	};
 }
 

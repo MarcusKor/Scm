@@ -2,7 +2,7 @@
 #include <Utils.h>
 
 #pragma warning (disable: 4101)
-int32_t main(int argc, char** argv)
+int32_t main(int32_t argc, char** argv)
 {
 #if defined (MS_WINDOWS_API)
     set_timer_resolution();

@@ -48,6 +48,7 @@ typedef enum eErrorSource
 extern "C" {
 #endif
 	char* get_os_version();
+	uint16_t get_address_family(const char* address);
 	bool check_hostname(const char* arg);
 	bool convert_to_bool(std::string str);
 	bool convert_to_uint(std::string token, uint32_t& value);
@@ -157,7 +158,11 @@ template <typename... Args>
 const char* format_string(const char* fmt, Args... args)
 {
 	static thread_local char buf[CMS_DEFAULT_BUFFER_SIZE];
+#if defined (MS_WINDOWS_API)
+	sprintf_s(buf, CMS_DEFAULT_BUFFER_SIZE, fmt, args...);
+#else
 	sprintf(buf, fmt, args...);
+#endif
 	return buf;
 }
 

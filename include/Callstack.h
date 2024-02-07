@@ -115,7 +115,7 @@ namespace VS3CODEFACTORY::CORE
     };
 
     template <typename Key, typename Value>
-    typename thread_local Callstack<Key, Value>::Context*
+    thread_local Callstack<Key, Value>::Context*
         Callstack<Key, Value>::m_pHead = nullptr;
 }
 

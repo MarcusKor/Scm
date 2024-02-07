@@ -1,0 +1,63 @@
+namespace VS3CODEFACTORY.CORE;
+
+union Packet {
+    C2S_CONNECT_REQ,
+    S2C_CONNECT_RES,
+    C2S_ENTER_REQ,
+    S2C_ENTER_RES,
+    C2S_USERLIST_REQ,
+    S2C_USERLIST_RES,
+    C2S_LEAVE_REQ,
+    S2C_LEAVE_RES,
+    C2S_CHAT_REQ,
+    S2C_CHAT_RES,
+    S2C_DISCONECTED_RES
+}
+
+table C2S_CONNECT_REQ {
+    name:string;
+}
+
+table S2C_CONNECT_RES {
+    b_success:bool;
+}
+
+table C2S_ENTER_REQ {
+}
+
+table S2C_ENTER_RES {
+    name:string;
+}
+
+table C2S_USERLIST_REQ {
+}
+
+table S2C_USERLIST_RES {
+    name:[string];
+}
+
+table C2S_LEAVE_REQ {
+}
+
+table S2C_LEAVE_RES {
+    name:string;
+}
+
+table C2S_CHAT_REQ {
+    message:string;
+}
+
+table S2C_CHAT_RES {
+    name:string;
+    message:string;
+}
+
+table S2C_DISCONECTED_RES {
+    name:string;
+}
+
+table Root {
+    packet:Packet;
+}
+
+root_type Root;

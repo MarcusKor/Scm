@@ -97,7 +97,7 @@ void set_timer_resolution(uint32_t res)
 
     if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) == TIMERR_NOERROR)
     {
-        wTimerRes = min(max(tc.wPeriodMin, g_timer_res= res), tc.wPeriodMax);
+        wTimerRes = std::min(std::max(tc.wPeriodMin, g_timer_res= res), tc.wPeriodMax);
         timeBeginPeriod(wTimerRes);
     }
 }
@@ -170,6 +170,47 @@ char* get_os_version()
 	return g_os_version_buffer;
 }
 
+uint16_t get_address_family(const char* address)
+{
+	uint16_t ret = AF_UNSPEC;
+
+	if (address != nullptr)
+	{
+		struct hostent* hent;
+		struct in_addr addr = { 0 };
+#if defined (MS_WINDOWS_API)
+		IN6_ADDR addr6;
+#else
+		unsigned char addr6[sizeof(struct in6_addr)];
+#endif
+		
+		int32_t result;
+
+		if (strstr(address, ":") != nullptr)
+		{
+			result = inet_pton(AF_INET6, address, &addr6);
+
+			if (result != 0)
+			{
+				hent = gethostbyaddr((char*)&addr6, 16, AF_INET6);
+				ret = AF_INET6;
+			}
+		}
+		else
+		{
+			addr.s_addr = inet_addr(address);
+
+			if (addr.s_addr != INADDR_NONE)
+			{
+				hent = gethostbyaddr((char*)&addr, 4, AF_INET);
+				ret = AF_INET;
+			}
+		}
+	}
+
+	return ret;
+}
+
 bool check_hostname(const char* arg)
 {
 	bool ret = false;
@@ -183,7 +224,7 @@ bool check_hostname(const char* arg)
 		char hostname[CMS_CONFIG_BUFFER_SIZE];
 		struct hostent* hostent_ptr = nullptr;
 		struct hostent* arg_hostent_ptr = nullptr;
-		struct in_addr addr;
+		struct in_addr addr = { 0 };
 		char* addr_item;
 		std::vector<std::string> hostent_addresses;
 		gethostname(hostname, CMS_CONFIG_BUFFER_SIZE);
@@ -368,10 +409,11 @@ float_t convert_to_float(uint32_t f)
 #if (WIN32)
 LARGE_INTEGER get_nano_diff(LARGE_INTEGER start, LARGE_INTEGER end)
 {
-    LARGE_INTEGER frq, result;
+	LARGE_INTEGER frq = { 0 };
+	LARGE_INTEGER ret = { 0 };
     QueryPerformanceFrequency(&frq);
-    result.QuadPart = ((end.QuadPart - start.QuadPart) / (frq.QuadPart / 1000000));
-    return result;
+    ret.QuadPart = ((end.QuadPart - start.QuadPart) / (frq.QuadPart / 1000000));
+    return ret;
 }
 #else
 timespec get_nano_diff(timespec start, timespec end)
@@ -558,7 +600,7 @@ std::chrono::nanoseconds calc_over_head()
         };
 
     time_point<steady_clock> start;
-    nanoseconds dur[tests];
+	nanoseconds dur[tests]{};
 
     for (auto& d : dur)
     {
@@ -818,7 +860,7 @@ int32_t write_string(const char* str)
 			{
 				ret = (int32_t)strlen(str);
 
-				if (g_log_list->StoreAtTail((void*)str, (ret + 1), 1) == -1)
+				if (g_log_list->StoreAtTail((void*)str, (static_cast<size_t>(ret) + 1), 1) == -1)
 					ret = EOF;
 			}
 		}
@@ -1269,10 +1311,10 @@ int32_t	write_log(const char* fmt, ...)
 
 	va_start(args, fmt);
 
-#if defined HAVE_VSNPRINTF
+#if defined (HAVE_VSNPRINTF)
 	ret = (int32_t)vsnprintf(g_log_buffer, sizeof(g_log_buffer), fmt, args);
 #else
-#if defined HAVE__VSNPRINTF
+#if defined (HAVE__VSNPRINTF)
 	ret = (int32_t)_vsnprintf(g_print_temp_buffer, sizeof(g_print_temp_buffer), fmt, args);
 #else
 	ret = vsprintf(g_print_temp_buffer, fmt, args);
@@ -1359,7 +1401,7 @@ void write_log_error(char* fmt, ...)
 		{
 			g_log_start_time_assigned = true;
 			g_log_start_time = get_epoch_time();
-			g_log_start_time = ((int32_t)g_log_start_time / 3600) * 3600.0;
+			g_log_start_time = ((int32_t)g_log_start_time / static_cast<double>(3600)) * 3600.0;
 		}
 
 #if defined POSIX_THREADS
@@ -1420,7 +1462,7 @@ void write_log_debug(int32_t flag, const char* fmt, ...)
 		{
 			g_log_start_time_assigned = true;
 			g_log_start_time = get_epoch_time();
-			g_log_start_time = ((int32_t)g_log_start_time / 3600) * 3600.0;
+			g_log_start_time = ((int32_t)g_log_start_time / static_cast<double>(3600)) * 3600.0;
 		}
 
 #if defined POSIX_THREADS
@@ -1501,7 +1543,7 @@ void print_error_args(const char* fmt, va_list args)
 			{
 				g_log_start_time_assigned = true;
 				g_log_start_time = get_epoch_time();
-				g_log_start_time = ((int32_t)g_log_start_time / 3600) * 3600.0;
+				g_log_start_time = ((int32_t)g_log_start_time / static_cast<double>(3600)) * 3600.0;
 			}
 
 			g_log_flush = true;
@@ -1586,7 +1628,7 @@ void print_warning(const char* fmt, ...)
 			{
 				g_log_start_time_assigned = true;
 				g_log_start_time = get_epoch_time();
-				g_log_start_time = ((int32_t)g_log_start_time / 3600) * 3600.0;
+				g_log_start_time = ((int32_t)g_log_start_time / static_cast<double>(3600)) * 3600.0;
 			}
 
 #if defined POSIX_THREADS
@@ -1689,7 +1731,7 @@ int32_t print_sys_error(int32_t err, const char* fmt, ...)
 	{
 		g_log_start_time_assigned = true;
 		g_log_start_time = get_epoch_time();
-		g_log_start_time = ((int32_t)g_log_start_time / 3600) * 3600.0;
+		g_log_start_time = ((int32_t)g_log_start_time / static_cast<double>(3600)) * 3600.0;
 	}
 
 #if defined POSIX_THREADS
@@ -1784,7 +1826,7 @@ void reset_error_count()
 #if defined (_Windows) || defined (_WINDOWS) || defined (WINDOWS)
 void CMS_PASCAL update_log_window()
 {
-	RECT rect;
+	RECT rect = { 0 };
 	update_logs();
 	g_log_win_lines_in_mem = get_log_list_size();
 
@@ -1868,7 +1910,7 @@ LRESULT log_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	HDC hdc;
 	TEXTMETRIC tm;
-	RECT invalid_rect;
+	RECT invalid_rect = { 0 };
 
 	switch (message)
 	{

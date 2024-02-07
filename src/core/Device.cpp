@@ -10,8 +10,8 @@ Device::Device()
 	, m_eDeviceChannelStrucutreType(DeviceChannelStrucutreType::SingleChannel)
 	, m_eDeviceSignalDirection(DeviceSignalDirection::Input)
 	, m_eDeviceCategory(DeviceCategory::DeviceUndefined)
-	, m_eDeviceInterface(DeviceInterface::Interface_Rs232)
-	, m_eDeviceInterfaceProtocol(DeviceInterfaceProtocol::Protocol_Custom_Raw)
+	, m_eDeviceInterface(DeviceInterface::InterfaceRs232)
+	, m_eDeviceInterfaceProtocol(DeviceInterfaceProtocol::ProtocolCustomRaw)
 	, m_nDeviceChannelType(0)
 	, m_uId(0)
 	, m_strName("") {}
@@ -39,3 +39,19 @@ void IoDevice::SetPolynomial(const Polynomial& f)
 	for (auto itr = f.m_vTerms.begin(); itr != f.m_vTerms.end(); itr++)
 		m_vFomular.m_vTerms.push_back(new Term(*itr));
 }
+
+CommunicationDevice::CommunicationDevice()
+	: Device() {}
+
+CommunicationDevice::CommunicationDevice(const uint32_t id, const std::string name)
+	: Device(id, name) {}
+
+CommunicationDevice::~CommunicationDevice() {}
+
+MotionDevice::MotionDevice()
+	: Device() {}
+
+MotionDevice::MotionDevice(const uint32_t id, const std::string name)
+	: Device(id, name) {}
+
+MotionDevice::~MotionDevice() {}

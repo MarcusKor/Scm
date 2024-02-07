@@ -23,7 +23,7 @@ namespace VS3CODEFACTORY::OSINF
 		bool Close();
 		bool IsSection(const char* section);
 		const char* Find(const char* tag, const char* section = nullptr);
-		int32_t FindSection(const char* section, cms_ini_item_t* items, int max);
+		int32_t FindSection(const char* section, cms_ini_item_t* items, int32_t max);
 
 	private:
 		FILE* m_pFile;

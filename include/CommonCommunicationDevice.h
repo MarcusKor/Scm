@@ -1,103 +1,167 @@
 #pragma once
 
-#ifndef ASIODMODEL_H
-#define ASIODMODEL_H
+#ifndef COMMONCOMMUNICATIONDEVICE_H
+#define COMMONCOMMUNICATIONDEVICE_H
 
 #include <cppstd.h>
-#include <boost/asio.hpp>
-#include <boost/asio/serial_port.hpp>
-#include <boost/asio/placeholders.hpp>
-#include <boost/asio/io_context_strand.hpp>
-#include <boost/asio/dispatch.hpp>
-#include <Device.h>
+#include <AsyncIoServiceDevice.h>
 
 namespace VS3CODEFACTORY::CORE
 {
-	typedef boost::asio::io_context asio_service;
-	typedef std::shared_ptr<boost::asio::ip::tcp::socket> tcp_socket_ptr;
-	typedef std::shared_ptr<boost::asio::ip::udp::socket> udp_socket_ptr;
-	typedef std::shared_ptr<boost::asio::ip::tcp::endpoint> tcp_endpoint_ptr;
-	typedef std::shared_ptr<boost::asio::ip::udp::endpoint> udp_endpoint_ptr;
-	typedef std::shared_ptr<boost::asio::serial_port> serial_port_ptr;
-	typedef boost::shared_array<uint8_t> shared_byte_buffer;
-	typedef boost::signals2::scoped_connection scoped_signal_slot_connection;
-
-	typedef std::function<void(const std::string&, const std::string&, const uint8_t&, const ServiceStatus&)> callback_changed_service_status;
-	typedef std::function<void(const std::string&, const std::string&, const DeviceStatus&, const DeviceCategory, const uint32_t&)> callback_changed_device_connection_status;
-	typedef std::function<void(const std::string&, const std::string&, const uint8_t*, const size_t)> callback_received_service_message;
-	typedef std::function<void(const std::string&, const std::string&, const DeviceCategory&, const uint8_t*, const size_t)> callback_received_device_message;
-
-	typedef enum eConnectionStatus
-	{
-		ConnectionUnknown,
-		ListenerCreated,
-		ClientCreated,
-		AcceptedAConnection,
-		ConnectedClient,
-		DisconnectedClient,
-		DisconnectedListener
-	} ConnectionStatus;
-
-	typedef enum eServiceStatus
-	{
-		OccurredReceiveFailure = -6,
-		OccurredTransmitFailure = -5,
-		OccurredReceiveTimedout = -4,
-		OccurredTransmitTimedout = -3,
-		OccurredOpenFailure = -2,
-		ServiceHaltedByError = -1,
-		ServiceStatusUnknown = 0,
-		ServiceCreated,
-		ServiceUninitialized,
-		ServiceInitialized,
-		ServiceStarted,
-		ServiceRunning,
-		ServicePaused,
-		ServiceStopped,
-		ServiceDestroyed,
-	} ServiceStatus;
-
-	class AsioModel
+	class CommonCommunicationDevice
+		: public AsyncIoServiceDevice
 	{
 	protected:
-		size_t m_nTransmitBufferSize;
-		size_t m_nReceiveBufferSize;
-		std::string m_strLocalEndPoint;
+		bool m_bStop;
+		std::size_t m_nTransmitBufferSize;
+		std::size_t m_nReceiveBufferSize;
+		std::string m_strLocalEndpoint;
 		std::string m_strRemoteEndpoint;
-		std::mutex m_mutex_property;
-		std::mutex m_mutex_transmit;
-		std::mutex m_mutex_transmitQueue;
-		std::map<std::string, std::string> m_mProperties;
+		std::mutex m_mxTransmitData;
 		std::vector<uint8_t> m_vTransmitQueue;
 		std::vector<uint8_t> m_vReceiveQueue;
+		std::map<std::string, std::string> m_nProperties;
 		shared_byte_buffer m_pTransmitBuffer;
-		std::thread* m_pService;
-		asio_service m_io;
+		async_thread_ptr m_pThread;
 
 		callback_changed_service_status m_service_status_changed;
 		callback_changed_device_connection_status m_device_connection_status_changed;
 		callback_received_service_message m_service_message_received;
 		callback_received_device_message m_device_message_received;
 
-		virtual bool IsValidChannel(const std::string& channel, const uint32_t& addressfamily = AF_INET) = 0;
-		virtual void CloseSubChannel() = 0;
-		virtual void ReceiveAsync() = 0;
-		virtual void OnReceive(const boost::system::error_code& error, size_t received) = 0;
-		virtual void OnSend() = 0;
-		virtual void OnSent(const boost::system::error_code& error, size_t transferred) = 0;
-		virtual void Dispose() = 0;
+		void DisposeManagedObjects() override
+		{
+			try
+			{
+				Close();
+				AsyncIoServiceDevice::DisposeManagedObjects();
+			}
+			catch (std::exception& ex)
+			{
+				std::cerr << ex.what() << std::endl;
+			}
+		}
+		virtual bool IsValid(const std::string& address, const uint16_t& addressfamily = AF_INET)
+		{
+			bool result = false;
+
+			if (!address.empty())
+			{
+				struct sockaddr_in sa = { 0 };
+				result = inet_pton(addressfamily, address.c_str(), &(sa.sin_addr)) != 0;
+			}
+
+			return result;
+		}
+		virtual void ReceiveAsync() {}
+		virtual void OnReceive(const boost::system::error_code& error, std::size_t transferred) {}
+		virtual void SendAsync() {}
+		virtual void OnSend() {}
+		virtual void OnSent(const boost::system::error_code& error, std::size_t transferred) {}
+		virtual void OnSendTo(const std::string& address, const uint16_t& port) {}
+		virtual void AppendTransmitData(const uint8_t* packet, const std::size_t& size)
+		{
+			std::scoped_lock<std::mutex> look(m_mxTransmitData);
+			m_vTransmitQueue.insert(m_vTransmitQueue.end(), packet, packet + size);
+		}
+		virtual void FlushTransmitDataQueue()
+		{
+			std::scoped_lock<std::mutex> look(m_mxTransmitData);
+			m_pTransmitBuffer.reset(new uint8_t[m_nTransmitBufferSize = m_vTransmitQueue.size()]);
+			std::copy(m_vTransmitQueue.begin(), m_vTransmitQueue.end(), m_pTransmitBuffer.get());
+			m_vTransmitQueue.clear();
+		}
+		virtual void FireChangedServerStatusCallback(
+			const std::string& message,
+			const ServiceStatus& status,
+			const uint8_t& controller = 0)
+		{
+			if (m_service_status_changed)
+				m_service_status_changed(m_strLocalEndpoint, message, m_eServiceStatus = status, controller);
+		}
+		virtual void FireChangedConnectionStatusCallback(
+			const std::string& message,
+			const DeviceStatus& status,
+			const DeviceCategory& devicecategory = DeviceCategory::DeviceUndefined,
+			const uint32_t& deviceid = 0)
+		{
+			if (m_device_connection_status_changed)
+				m_device_connection_status_changed(m_strLocalEndpoint, message, m_eDeviceStatus = status, devicecategory, deviceid);
+		}
+		virtual void FireReceiveServerMessageCallback(
+			const uint8_t* packet,
+			const std::size_t size)
+		{
+			if (m_service_message_received)
+				m_service_message_received(m_strLocalEndpoint, m_strRemoteEndpoint, packet, size);
+		}
+		virtual void FireReceiveDeviceMessageCallback(
+			const DeviceCategory& devicecategory,
+			const uint8_t* packet,
+			const std::size_t size)
+		{
+			if (m_device_message_received)
+				m_device_message_received(m_strLocalEndpoint, m_strRemoteEndpoint, devicecategory, packet, size);
+		}
+		virtual void Execute() {}
 
 	public:
-		virtual bool Open(const std::string& params, const std::string& pattern = R"((\t))") = 0;
-		virtual void Close() = 0;
-		virtual size_t Send(const uint8_t* packet, const size_t& size) = 0;
-		virtual bool Send(const std::vector<uint8_t>& packet) = 0;
-		virtual void SendAsync(const std::string& message) = 0;
-		virtual void SendAsync(const uint8_t* packet, const size_t& size) = 0;
-		virtual void SendAsync(const std::vector<uint8_t>& packet) = 0;
-		virtual bool IsOpen() = 0;
-
-		virtual size_t GetAvailableDeviceChannels(std::vector<std::string>& channels)
+		CommonCommunicationDevice(
+			std::size_t transmitbuffersize = 0,
+			std::size_t receivebuffersize = 0)
+			: AsyncIoServiceDevice()
+			, m_bStop(false)
+			, m_strLocalEndpoint("")
+			, m_strRemoteEndpoint("")
+			, m_nTransmitBufferSize(0)
+			, m_nReceiveBufferSize(receivebuffersize)
+			, m_vReceiveQueue(receivebuffersize)
+			, m_pThread(nullptr)
+			, m_service_status_changed(nullptr)
+			, m_device_connection_status_changed(nullptr)
+			, m_service_message_received(nullptr)
+			, m_device_message_received(nullptr)
+		{
+			m_eServiceStatus = ServiceStatus::ServiceStatusUnknown;
+		}
+		virtual bool Start(const std::map<std::string, std::string>& params)
+		{
+			return false;
+		}
+		virtual bool Start(const std::string& params,
+			const std::string& pattern = R"((\t))",
+			const DeviceInterface& interfacetype = DeviceInterface::InterfaceRs232)
+		{
+			return false;
+		}
+		virtual bool Open(const std::string& address, const uint16_t& port) { return false; }
+		virtual bool Open() { return false; }
+		virtual void Close() { }
+		virtual bool Send(const uint8_t* packet, const std::size_t& size)
+		{
+			return 0;
+		}
+		virtual bool Send(const std::vector<uint8_t>& packet)
+		{
+			return Send(&packet[0], packet.size());
+		}
+		virtual void SendAsync(const std::string& message) {}
+		virtual void SendAsync(const std::vector<uint8_t>& packet) {}
+		virtual void SendAsync(const uint8_t* packet, const std::size_t& size) {}
+		virtual std::size_t SendTo(const uint8_t* packet, const size_t& size, const udp_endpoint_ptr& endpoint)
+		{
+			return 0;
+		}
+		virtual std::size_t SendTo(const uint8_t* packet, const size_t& size, const std::string& address, const uint16_t& port)
+		{
+			return 0;
+		}
+		virtual void SendToAsync(const uint8_t* packet, const size_t& size, const udp_endpoint_ptr& ebdoiubt) {}		
+		virtual void SendToAsync(const uint8_t* packet, const size_t& size, const std::string& address, const uint16_t& port) {}
+		virtual bool IsConnected() { return false; }
+		virtual bool Create() { return false; }
+		virtual void Destroy() {}
+		virtual std::size_t GetAvailableDeviceChannels(std::vector<std::string>& channels)
 		{
 			return size_t(0);
 		};
@@ -106,91 +170,38 @@ namespace VS3CODEFACTORY::CORE
 			return std::string("");
 		}
 		virtual void PrintAllDeviceChannels() {}
-
-	protected:
-		virtual void FireChangedServerStatusCallback(
-			const std::string& message,
-			const uint8_t& controller,
-			const ServiceStatus& status)
-		{
-			if (m_server_status_changed)
-				m_server_status_changed(m_strLocalEndPoint, message, controller, status);
-		}
-		virtual void FireChangedConnectionStatusCallback(
-			const std::string& message,
-			const DeviceStatus& status,
-			const DeviceCategory& devicecategory = DeviceCategory::DeviceUndefined,
-			const uint32_t& deviceid = 0)
-		{
-			if (m_connection_status_changed)
-				m_connection_status_changed(m_strLocalEndPoint, message, status, devicecategory, deviceid);
-		}
-		virtual void FireReceiveServerMessageCallback(
-			const uint8_t* packet,
-			const size_t size)
-		{
-			if (m_server_message_received)
-				m_server_message_received(m_strLocalEndPoint, m_strRemoteEndpoint, packet, size);
-		}
-		virtual void FireReceiveClientMessageCallback(
-			const DeviceCategory& devicecategory,
-			const uint8_t* packet,
-			const size_t size)
-		{
-			if (m_device_message_received)
-				m_device_message_received(m_strLocalEndPoint, m_strRemoteEndpoint, devicecategory, packet, size);
-		}
-
-	public:
-		AsioModel(std::size_t receivebuffersize = KB(1),
-			std::size_t transmitbuffersize = KB(3))
-			: m_strLocalEndPoint("")
-			, m_strRemoteEndpoint("")
-			, m_nTransmitBufferSize(0)
-			, m_nReceiveBufferSize(receivebuffersize)
-			, m_vReceiveQueue(receivebuffersize)
-			, m_pService(nullptr)
-			, m_service_status_changed(nullptr)
-			, m_device_connection_status_changed(nullptr)
-			, m_service_message_received(nullptr)
-			, m_device_message_received(nullptr) {}
-		virtual ~AsioModel() {}
 		virtual std::string& GetChannelByString()
 		{
 			return GetLocalEndpointByString();
 		}
 		virtual std::string& GetLocalEndpointByString()
 		{
-			return m_strLocalEndPoint;
+			return m_strLocalEndpoint;
 		}
 		virtual std::string& GetRemoteEndpointByString()
 		{
 			return m_strRemoteEndpoint;
-		}
-		virtual size_t Send(const std::string& message)
-		{
-			return Send((uint8_t*)message.c_str(), message.size());
 		}
 		virtual void AttachChangedServiceStatusCallaback(
 			const callback_changed_service_status& callback)
 		{
 			m_service_status_changed = std::move(callback);
 		}
-		virtual void AttachChangedDevice_ConnectionStatusCallaback(
+		virtual void AttachChangedDeviceConnectionStatusCallaback(
 			const callback_changed_device_connection_status& callback)
 		{
 			m_device_connection_status_changed = std::move(callback);
 		}
 		virtual void DettachChangedServiceStatusCallaback()
 		{
-			m_service_status_changed empty;
+			callback_changed_service_status empty;
 
 			if (m_service_status_changed)
 				m_service_status_changed.swap(empty);
 		}
 		virtual void DettachChangedDeviceConnectionStatusCallaback()
 		{
-			m_device_connection_status_changed empty;
+			callback_changed_device_connection_status empty;
 
 			if (m_device_connection_status_changed)
 				m_device_connection_status_changed.swap(empty);
@@ -207,33 +218,46 @@ namespace VS3CODEFACTORY::CORE
 		}
 		virtual void DettachReceivedServiceMessageCallaback()
 		{
-			m_service_message_received empty;
+			callback_received_service_message empty;
 
 			if (m_service_message_received)
 				m_service_message_received.swap(empty);
 		}
 		virtual void DettachReceivedDeviceMessageCallaback()
 		{
-			m_device_message_received empty;
+			callback_received_device_message empty;
 
 			if (m_device_message_received)
 				m_device_message_received.swap(empty);
 		}
+		virtual void AddRemoteEndpoint(const std::string& address, const uint16_t& port) {}
+		virtual bool HasRemoteEndpoint(const std::string& address, const uint16_t& port)
+		{
+			return false;
+		}		
+		virtual void RemoveRemoteEndpointByAddress(const std::string& address) {}
+		virtual void RemoveRemoteEndpointByPort(const uint16_t& port) {}
+		virtual void RemoveRemoteEndpoint(const std::string& address, const uint16_t& port) {}
 		static bool ParseParameters(
-			const DeviceObject::DeviceInterfaceType& devicetype,
+			const DeviceInterface& devicetype,
 			const std::map<std::string, std::string>& params,
 			std::map<std::string, std::string>& parameters)
 		{
 			try
 			{
-				int count = 0;
+				int32_t count = 0;
 				std::string param_name;
 
 				switch (devicetype)
 				{
-				case DeviceObject::DeviceInterfaceType::DeviceInterface_SerialPort:
+				case DeviceInterface::InterfaceRs232:
+				case DeviceInterface::InterfaceRs422:
+				case DeviceInterface::InterfaceRs485:
+				case DeviceInterface::InterfaceI2c:
+				case DeviceInterface::InterfaceSpi:
+				case DeviceInterface::InterfaceUart:
 					{
-						for (auto param : params)
+						for (std::pair<std::string, std::string> param : params)
 						{
 							if (param.first.compare("port") == 0 ||
 								param.first.compare("baudrate") == 0 ||
@@ -245,11 +269,11 @@ namespace VS3CODEFACTORY::CORE
 						}
 					}
 					break;
-				case DeviceObject::DeviceInterfaceType::DeviceInterface_Ethernet:
+				case DeviceInterface::InterfaceEthernet:
 					{
 						std::vector<std::string> elements;
 
-						for (auto param : params)
+						for (std::pair<std::string, std::string> param : params)
 						{
 							if (param.first.compare("address") == 0 ||
 								param.first.compare("listenport") == 0 ||
@@ -265,9 +289,9 @@ namespace VS3CODEFACTORY::CORE
 								parameters.emplace(param);
 							else if (param.first.compare("remoteendpoints") == 0)
 							{
-								int index = 1;
+								int32_t index = 1;
 								param_name = "remoteendpoint_";
-								elements = split(param.second, R"(( |,|;|\t))");
+								elements = split_string(param.second, R"(( |,|;|\t))");
 								std::vector<std::string>::const_iterator itr;
 
 								for (itr = elements.begin();
@@ -277,8 +301,8 @@ namespace VS3CODEFACTORY::CORE
 							}
 							else if (param.first.compare("localendpoint") == 0)
 							{
-								int index = 1;
-								elements = split(param.second, R"((:))");
+								int32_t index = 1;
+								elements = split_string(param.second, R"((:))");
 
 								if (elements.size() >= 2)
 								{
@@ -292,7 +316,7 @@ namespace VS3CODEFACTORY::CORE
 							else if (param.first.size() > 15 &&
 								param.first.substr(0, 15).compare("remoteendpoint_") == 0)
 							{
-								elements = split(param.first, R"((_))");
+								elements = split_string(param.first, R"((_))");
 
 								if (elements.size() >= 2 &&
 									(count = std::stoul(elements[1]) > 0))
@@ -311,23 +335,28 @@ namespace VS3CODEFACTORY::CORE
 			return parameters.size() > 0;
 		}
 		static bool ParseParameters(
-			const DeviceObject::DeviceInterfaceType& devicetype,
+			const DeviceInterface& devicetype,
 			const std::string& params,
 			std::map<std::string,
 			std::string>& parameters,
 			const std::string& pattern = R"((\t))")
 		{
 			std::string param_name;
-			std::vector<std::string> tokens = split(params, pattern);
+			std::vector<std::string> tokens = split_string(params, pattern);
 
 			switch (devicetype)
 			{
-			case DeviceObject::DeviceInterfaceType::DeviceInterface_SerialPort:
+			case DeviceInterface::InterfaceRs232:
+			case DeviceInterface::InterfaceRs422:
+			case DeviceInterface::InterfaceRs485:
+			case DeviceInterface::InterfaceI2c:
+			case DeviceInterface::InterfaceSpi:
+			case DeviceInterface::InterfaceUart:
 				{
-					for (auto token : tokens)
+					for (std::string token : tokens)
 					{
 						std::vector<std::string> param =
-							split(token, R"((=| |,|:|;))");
+							split_string(token, R"((=| |,|:|;))");
 
 						if (param.size() >= 2)
 						{
@@ -345,11 +374,11 @@ namespace VS3CODEFACTORY::CORE
 					}
 				}
 				break;
-			case DeviceObject::DeviceInterfaceType::DeviceInterface_Ethernet:
+			case DeviceInterface::InterfaceEthernet:
 				{
-					for (auto token : tokens)
+					for (std::string token : tokens)
 					{
-						std::vector<std::string> param = split(token, R"((=|,))");
+						std::vector<std::string> param = split_string(token, R"((=|,))");
 
 						if (param.size() >= 2)
 						{
@@ -370,7 +399,7 @@ namespace VS3CODEFACTORY::CORE
 								parameters.emplace(param[0], param[1]);
 							else if (param[0].compare("remoteendpoints") == 0)
 							{
-								int index = 1;
+								int32_t index = 1;
 								param_name = param[0].substr(0, param[0].size() - 1) + "_";
 								std::vector<std::string>::const_iterator itr;
 
@@ -381,8 +410,8 @@ namespace VS3CODEFACTORY::CORE
 							}
 							else if (param[0].compare("localendpoint") == 0)
 							{
-								int index = 1;
-								std::vector<std::string> elements = split(param[1], R"((:))");
+								int32_t index = 1;
+								std::vector<std::string> elements = split_string(param[1], R"((:))");
 
 								if (elements.size() >= 2)
 								{
@@ -405,7 +434,7 @@ namespace VS3CODEFACTORY::CORE
 			return parameters.size() > 0;
 		}
 		static bool HaveRequiredParameters(
-			const DeviceObject::DeviceInterfaceType& devicetype,
+			const DeviceInterface& devicetype,
 			const std::map<std::string,
 			std::string>& parameters)
 		{
@@ -413,7 +442,12 @@ namespace VS3CODEFACTORY::CORE
 			{
 			default:
 				return false;
-			case DeviceObject::DeviceInterfaceType::DeviceInterface_SerialPort:
+			case DeviceInterface::InterfaceRs232:
+			case DeviceInterface::InterfaceRs422:
+			case DeviceInterface::InterfaceRs485:
+			case DeviceInterface::InterfaceI2c:
+			case DeviceInterface::InterfaceSpi:
+			case DeviceInterface::InterfaceUart:
 				return parameters.size() >= 6 &&
 					parameters.contains("port") &&
 					parameters.contains("baudrate") &&
@@ -421,13 +455,14 @@ namespace VS3CODEFACTORY::CORE
 					parameters.contains("databits") &&
 					parameters.contains("stopbits") &&
 					parameters.contains("flowcontrol");
-			case DeviceObject::DeviceInterfaceType::DeviceInterface_Ethernet:
+			case DeviceInterface::InterfaceEthernet:
 				return parameters.size() >= 3 &&
 					parameters.contains("address") &&
 					parameters.contains("listenport") &&
 					parameters.contains("remoteendpoint_1");
 			}
+		}
 	};
 }
 
-#endif // ASIODMODEL_H
+#endif // COMMONCOMMUNICATIONDEVICE_H

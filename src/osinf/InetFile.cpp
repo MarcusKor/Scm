@@ -5,7 +5,7 @@
 HINTERNET g_hInternet_session = nullptr;
 #endif
 
-int initialize_inet_file(const char* name, const char* version, int debug)
+int32_t initialize_inet_file(const char* name, const char* version, int32_t debug)
 {
 #if defined (MS_WINDOWS_API)
     if (g_hInternet_session == nullptr)
@@ -137,7 +137,7 @@ VS3CODEFACTORY::OSINF::InetFile* open_inet_file(const char* url, const char* typ
     return ret;
 }
 
-char* gets_inet_file(char* str, int maxlen, VS3CODEFACTORY::OSINF::InetFile* file)
+char* gets_inet_file(char* str, int32_t maxlen, VS3CODEFACTORY::OSINF::InetFile* file)
 {
     if (file == nullptr || str == nullptr)
         return nullptr;
@@ -145,8 +145,8 @@ char* gets_inet_file(char* str, int maxlen, VS3CODEFACTORY::OSINF::InetFile* fil
 #if !defined (MS_WINDOWS_API)    
     return file->m_pFile != nullptr ? fgets(str, maxlen, file->m_pFile) : nullptr;
 #else
-    int bytes_in_str = 0;
-    int end_of_line = 0;
+    int32_t bytes_in_str = 0;
+    int32_t end_of_line = 0;
     char* ptr_in_str = str;
     bool stop = false;
     

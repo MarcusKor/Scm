@@ -2,14 +2,17 @@
 
 using namespace VS3CODEFACTORY::CORE;
 
+template <typename Processor>
 Strand::Strand(Processor& processor)
     : m_rProcessor(processor) {}
 
+template <typename Processor>
 bool Strand::RunningInThisThread()
 {
     return Callstack<Strand>::Contains(this) != nullptr;
 }
 
+template <typename Processor>
 void Strand::Run()
 {
     Callstack<Strand>::Context ctx(this);

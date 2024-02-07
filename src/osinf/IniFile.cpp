@@ -336,7 +336,7 @@ const char* IniFile::Find(const char* tag, const char* section)
 	return find_ini_item(m_pFile, tag, section);
 }
 
-int32_t IniFile::FindSection(const char* section, cms_ini_item_t* items, int max)
+int32_t IniFile::FindSection(const char* section, cms_ini_item_t* items, int32_t max)
 {
 	if (m_pFile == nullptr)
 		return 0;

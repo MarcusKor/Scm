@@ -5,16 +5,17 @@
 
 #include <cppstd.h>
 #include <Polynomial.h>
+#include <Disposable.h>
 
 namespace VS3CODEFACTORY::CORE
 {
 	typedef enum eDeviceStatus
 	{
-		OccurredReceiveFailure = -6,
-		OccurredTransmitFailure = -5,
-		OccurredReceiveTimedout = -4,
-		OccurredTransmitTimedout = -3,
-		OccurredOpenFailure = -2,
+		DeviceOccurredReceiveFailure = -6,
+		DeviceOccurredTransmitFailure = -5,
+		DeviceOccurredReceiveTimedout = -4,
+		DeviceOccurredTransmitTimedout = -3,
+		DeviceOccurredOpenFailure = -2,
 		DeviceHaltedByError = -1,
 		DeviceNotCreated = 0,
 		DeviceCreated,
@@ -27,6 +28,25 @@ namespace VS3CODEFACTORY::CORE
 		DeviceStopped,
 		DeviceDestroyed
 	} DeviceStatus;
+
+	typedef enum eServiceStatus
+	{
+		ServiceOccurredReceiveFailure = -6,
+		ServiceOccurredTransmitFailure = -5,
+		ServiceOccurredReceiveTimedout = -4,
+		ServiceOccurredTransmitTimedout = -3,
+		ServiceOccurredOpenFailure = -2,
+		ServiceHaltedByError = -1,
+		ServiceStatusUnknown = 0,
+		ServiceCreated,
+		ServiceUninitialized,
+		ServiceInitialized,
+		ServiceStarted,
+		ServiceRunning,
+		ServicePaused,
+		ServiceStopped,
+		ServiceDestroyed,
+	} ServiceStatus;
 
 	typedef enum eDeviceOperation
 	{
@@ -48,7 +68,7 @@ namespace VS3CODEFACTORY::CORE
 		ByPass,
 		Read,
 		ReadWithinTimeout,
-		ReadAsync,
+		ReceiveAsync,
 		Write,
 		WriteWithinTimeout,
 		WriteAsync		
@@ -158,50 +178,50 @@ namespace VS3CODEFACTORY::CORE
 
 	typedef enum eDeviceInterface
 	{
-		Interface_Rs232,
-		Interface_Rs422,
-		Interface_Rs485,
-		Interface_I2c,
-		Interface_Uart,
-		Interface_Usb,
-		Interface_Bluetooth,
-		Interface_Wifi,
-		Interface_Ethernet,
-		Interface_Parallel,
-		Interface_Pci,
-		Interface_Vme,
-		Interface_Gpio,
-		Interface_FieldBus		
+		InterfaceRs232,
+		InterfaceRs422,
+		InterfaceRs485,
+		InterfaceI2c,
+		InterfaceSpi,
+		InterfaceUart,
+		InterfaceUsb,
+		InterfaceBluetooth,
+		InterfaceWifi,
+		InterfaceEthernet,
+		InterfaceParallel,
+		InterfacePci,
+		InterfaceVme,
+		InterfaceGpio,
+		InterfaceFieldBus		
 	} DeviceInterface;
 
 	typedef enum eDeviceInterfaceProtocol
 	{
-		Protocol_Custom_Raw,
-		Protocol_Custom_Xml,
-		Protocol_Custom_Json,
-		Protocol_Custom_Restful,
-		Protocol_ModbusAscii,
-		Protocol_ModbusRtu,
-		Protocol_ModbusRtuOverTcp,
-		Protocol_ModbusTcp,
-		Protocol_CanBus,
-		Protocol_LanBus,
-		Protocol_Ethercat,
-		Protocol_Protobuf,
-		Protocol_Secs,
-		Protocol_Secs_Gem,
-		Protocol_Secs_Gem300
+		ProtocolCustomRaw,
+		ProtocolCustomXml,
+		ProtocolCustomJson,
+		ProtocolCustomRestful,
+		ProtocolModbusAscii,
+		ProtocolModbusRtu,
+		ProtocolModbusRtuOverTcp,
+		ProtocolModbusTcp,
+		ProtocolCanBus,
+		ProtocolLanBus,
+		ProtocolEthercat,
+		ProtocolProtobuf,
+		ProtocolSecs,
+		ProtocolSecsGem,
+		ProtocolSecsGem300
 	} DeviceInterfaceProtocol;
 
 	class Device
-		: public std::enable_shared_from_this<Device>
+		: public Disposable
+		, public std::enable_shared_from_this<Device>
+		, public boost::noncopyable
 	{
 	public:
 		uint32_t m_uId;
 		std::string m_strName;
-
-		Device(const Device& src) = delete;
-		Device& operator=(const Device& src) = delete;
 
 		Device();
 		Device(const uint32_t id, const std::string name);
@@ -265,17 +285,17 @@ namespace VS3CODEFACTORY::CORE
 		DeviceIoType m_eDeviceIoType;
 	};
 
-	class CommunicationIoDevice
-		: public IoDevice
+	class CommunicationDevice
+		: public Device
 	{
 	public:
-		CommunicationIoDevice();
-		CommunicationIoDevice(const uint32_t id, const std::string name);
-		virtual ~CommunicationIoDevice();
+		CommunicationDevice();
+		CommunicationDevice(const uint32_t id, const std::string name);
+		virtual ~CommunicationDevice();
 	};
 
 	class MotionDevice
-		: public CommunicationIoDevice
+		: public Device
 	{
 	public:
 		MotionDevice();

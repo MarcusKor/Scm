@@ -35,11 +35,11 @@ namespace VS3CODEFACTORY::OSINF
 #ifdef __cplusplus
 extern "C" {
 #endif
-    int initialize_inet_file(const char* name, const char* version, int debug);
+    int32_t initialize_inet_file(const char* name, const char* version, int32_t debug);
     bool exit_inet_file();
     VS3CODEFACTORY::OSINF::InetFile* open_inet_file(const char* url, const char* type);
     void close_inet_file(VS3CODEFACTORY::OSINF::InetFile* file);
-    char* gets_inet_file(char* str, int maxlen, VS3CODEFACTORY::OSINF::InetFile* file);
+    char* gets_inet_file(char* str, int32_t maxlen, VS3CODEFACTORY::OSINF::InetFile* file);
     bool eof_inet_file(VS3CODEFACTORY::OSINF::InetFile* file);
     bool rewind_inet_file(VS3CODEFACTORY::OSINF::InetFile* file);
 #ifdef __cplusplus

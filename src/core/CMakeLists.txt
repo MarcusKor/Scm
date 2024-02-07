@@ -11,27 +11,57 @@ add_definitions (-D_SBCS -DSCMSLIB_DYNAMIC -DUSING_DECLSPEC -DPOSIX_SHAREDMEM -D
 add_library (core SHARED
                         "Buffer.cpp"
                         "Polynomial.cpp"
-                        "Device.cpp")
+                        "Device.cpp"
+                        "WorkQueue.cpp"
+                        "StructuredMessage.cpp"
+                        "TcpSession.cpp"
+                        "TcpSessionContainer.cpp"
+                        "TcpServer.cpp"
+                        "TcpClient.cpp"
+                        "TcpStructuredMessageSession.cpp"
+                        "TcpStructuredMessageSessionContainer.cpp"
+                        "TcpStructuredMessageServer.cpp"                        
+                        "TcpStructuredMessageClient.cpp"
+                        "UdpServer.cpp"
+                        "UdpClient.cpp"
+                        "SerialPort.cpp")
 
-#add_executable (testcore)
-#target_sources (testcore PRIVATE "TestCore.cpp")
+message (STATUS "[ FLATBUFFERS_FLATC_EXECUTABLE=${FLATBUFFERS_FLATC_EXECUTABLE} ]")
+
+#set (FB_SCHEMA "${PROJECT_SOURCE_DIR}/schema/protocol.fbs")
+#build_flatbuffers ("${FB_SCHEMA}" "${PROJECT_SOURCE_DIR}/schema" fbschemas "" "${PROJECT_SOURCE_DIR}/include" "" "")
+#add_library (FlatbuffersTarget INTERFACE)
+#target_include_directories (FlatbuffersTarget INTERFACE ${FLATBUFFERS_INCLUDE_DIR})
+#add_dependencies (FlatbuffersTarget fbschemas)
+add_executable (test_chatserver)
+add_executable (test_chatclient)
+target_include_directories (test_chatserver INTERFACE ${FLATBUFFERS_INCLUDE_DIR})
+target_include_directories (test_chatclient INTERFACE ${FLATBUFFERS_INCLUDE_DIR})
+target_sources (test_chatserver PRIVATE "TestStructuredMessageServer.cpp")
+target_sources (test_chatclient PRIVATE "TestStructuredMessageClient.cpp")
 target_link_libraries (core PRIVATE utils)
-#target_link_libraries (testcore PRIVATE utils core)
-
+target_link_libraries (test_chatserver PRIVATE utils core)
+target_link_libraries (test_chatclient PRIVATE utils core)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
     set_property (TARGET core PROPERTY CXX_STANDARD 20)
-    #set_property (TARGET testcore PROPERTY CXX_STANDARD 20)
+    set_property (TARGET test_chatserver PROPERTY CXX_STANDARD 20)
+    set_property (TARGET test_chatclient PROPERTY CXX_STANDARD 20)
     set_target_properties (core
         PROPERTIES
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-    #set_target_properties (testcore
-    #    PROPERTIES
-    #    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    #    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    #    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set_target_properties (test_chatserver
+        PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set_target_properties (test_chatclient
+        PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 endif ()
 
 if (${BOOST_FOUND})
@@ -50,9 +80,12 @@ if (${BOOST_FOUND})
                         COMMENT "Copied specified dependency file: ${file}")
                 endforeach (file)
             endif ()
-            #add_custom_command (TARGET testcore POST_BUILD
-            #            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:testcore> ${CMAKE_BINARY_DIR}/bin
-            #            COMMENT "Copied executable file")
+            add_custom_command (TARGET test_chatserver POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:test_chatserver> ${CMAKE_BINARY_DIR}/bin
+                        COMMENT "Copied executable file")
+            add_custom_command (TARGET test_chatclient POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:test_chatclient> ${CMAKE_BINARY_DIR}/bin
+                        COMMENT "Copied executable file")
         endif ()
     endif ()
 endif ()

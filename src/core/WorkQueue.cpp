@@ -1,3 +1,4 @@
+#include <Callstack.h>
 #include <WorkQueue.h>
 
 using namespace VS3CODEFACTORY::CORE;
@@ -16,10 +17,8 @@ void WorkQueue::Run()
             m_qFunctions.pop();
         }
 
-        if (w)
-        {
+        if (w != nullptr)
             w();
-        }
         else
         {
             Push(nullptr);
@@ -33,7 +32,7 @@ void WorkQueue::Stop()
     Push(nullptr);
 }
 
-bool WorkQueue::CanDispatch()
+bool WorkQueue::CanDispatch() const
 {
-    return Callstack<WorkQueue>::contains(this) != nullptr;
+    return Callstack<WorkQueue>::Contains(this) != nullptr;
 }

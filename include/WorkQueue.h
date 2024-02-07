@@ -20,12 +20,12 @@ namespace VS3CODEFACTORY::CORE
 
         void Run();
         void Stop();
-        bool CanDispatch();
+        bool CanDispatch() const;
 
     private:
         std::condition_variable m_cv;
         std::mutex m_mx;
-        std::queue<std::function<void(void* args)>> m_qFunctions;
+        std::queue<std::function<void()>> m_qFunctions;
     };
 }
 

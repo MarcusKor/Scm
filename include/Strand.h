@@ -100,4 +100,6 @@ namespace VS3CODEFACTORY::CORE
     };
 }
 
+#include <Strand.inl>
+
 #endif // STRAND_H
